@@ -50,10 +50,13 @@ def count_action(players):
    return actions.count(1)
 
 num_type_0 = 15
+num_type_1 = 1
 q = 1/3
 
 players = [Player(0, q) for i in range(num_type_0)]
-players.insert(randint(0, num_type_0), Player(1, q))
+players_1 = [Player(1, q) for i in range(num_type_1)]
+for player_1 in players_1:
+   players.insert(randint(0, num_type_0), player_1)
 
 transition = [1]
 
