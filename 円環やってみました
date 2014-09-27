@@ -14,7 +14,11 @@ class Player:
 
    def get_opponent(self, players):
       position = players.index(self)  #両隣と対戦する様にしました。
-      return players[position-1], players[position+1] if players[position] != players[-1] else players[-2], players[0]
+      if players[position] != players[-1]: 
+         opponent = players[position-1], players[position+1]
+      else: 
+         opponent = players[-2], players[0]
+      return opponent
       
       
    def action_distribution(self):
