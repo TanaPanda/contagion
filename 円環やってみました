@@ -11,23 +11,18 @@ class Player:
       self.type = type
       self.type_dist = np.array([1, 0]) if self.type == 0 else np.array([0,1])
       self.gain_matrix = np.array([[q, 0], [0, 1-q]])   
-
-   def get_opponent(self, players):
+      
+   def action_distribution(self, players):
       position = players.index(self)  #両隣と対戦する様にしました。
       if players[position] != players[-1]: 
-         opponent = players[position-1], players[position+1]
+         op_1, op_2 = players[position-1], players[position+1]
       else: 
-         opponent = players[-2], players[0]
-      return opponent
-      
-      
-   def action_distribution(self):
-      op_1, op_2 = self.get_opponent(players)
+         op_1, op_2 = players[-2], players[0]
       return np.dot(op_1.type_dist, self.gain_matrix) + np.dot(op_2.type_dist, self.gain_matrix)
 
    def play(self):
 
-      act_dist = self.action_distribution()
+      act_dist = self.action_distribution(players)
 
       if act_dist[0] > act_dist[1]:
          action = 0
@@ -75,9 +70,9 @@ while 1:
    transition.append(count_action(players))
    
    if no_one_changed:
-      breack
+      break
 
 
 plt.plot(transition, label="action transition")
 plt.legend()
-plt.show
+plt.show()
