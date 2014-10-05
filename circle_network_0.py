@@ -14,7 +14,7 @@ class Player:
     def action_distribution(self, N, m, players):
       
         adj_matrix = np.zeros((N, N))             #両隣と対戦する様にしました。
-        adj_matrix[N-1,0], adj_matrix[N-1,N-1] = 1, 1
+        adj_matrix[N-1,0], adj_matrix[N-1,N-2] = 1, 1
         for i in range(N-1):
             adj_matrix[i, i-1], adj_matrix[i, i+1] = 1, 1
         
