@@ -32,9 +32,9 @@ class Player:
 class Local_Interaction:
 
     def __init__(self, N, positions_1):
-        self.players = [Player(0, q) for i in range(N)]
+        self.players = [Player(0, gain_matrix) for i in range(N)]
         for i in positions_1:
-            self.players[i] = Player(1, q)
+            self.players[i] = Player(1, gain_matrix)
 
     def current_state(self):
 
@@ -67,7 +67,7 @@ class Local_Interaction:
 
 N = 15 
 m = 2 #num_opponent 
-g = 1/3
+q = 1/3
 gain_matrix = np.array([[q, 0], [0, 1-q]])
 T = 20 
 positions_1 = [3]
