@@ -59,24 +59,24 @@ def count_action(players):
 
     return actions.count(1)
 
-num_state_0 = 15
-num_state_1 = 1
-N = num_state_0 + num_state_1
+num_0 = 15
+num_1 = 1
+N = num_0 + num_1
 m = 2    #num_opponent
 q = 1/3
 T = 200
 
-players = [Player(0, q) for i in range(num_type_0)]
-players_1 = [Player(1, q) for i in range(num_type_1)]
+players = [Player(0, q) for i in range(num_0)]
+players_1 = [Player(1, q) for i in range(num_1)]
 for player_1 in players_1:
-   players.insert(randint(0, num_type_0), player_1)
+   players.insert(random.randint(0, num_0), player_1)
 
 transition = []
 
 for t in range(T):
     transition.append(count_action(players))
     #print [player.action_distribution(N, m, players) for player in players]
-    i = randint(0, N-1)
+    i = random.randint(0, N-1)
     players[i].update_player()
 
 
