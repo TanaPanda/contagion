@@ -68,7 +68,7 @@ class Local_Interaction:
     def update(self):
         actions = []
         for player in self.players:
-            actions.append(player.play(circle))
+            actions.append(player.play(self))
         for i, player in enumerate(self.players):
             player.state = actions[i]
 
