@@ -4,6 +4,7 @@ from __future__ import division
 import matplotlib.pyplot as plt 
 import random 
 import numpy as np 
+import networkx as nx
 
 class Player:
     
@@ -96,4 +97,20 @@ for i in range(T):
 plt.plot(transition_1, label="action transition_1")
 plt.plot(transition_2, label="action transition_2")
 plt.legend() 
+plt.show() 
+
+
+G = nx.Graph()
+for i in range(N-1):
+    G.add_edge(i, i+1, {"weight":10})
+G.add_edge(0, N-1, {"weight":10})
+
+pos = nx.spring_layout(G)
+
+nx.draw_networkx_nodes(G, pos, node_size=300, node_color="w")
+nx.draw_networkx_edges(G, pos, width=1)
+nx.draw_networkx_labels(G, pos ,font_size=13, font_color="r")
+
+plt.xticks([])
+plt.yticks([])
 plt.show() 
