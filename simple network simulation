@@ -12,28 +12,37 @@ class Player:
         self.state = state
         self.q = q   
 
-    def play(self, circle):
+    def play(self, network):
         if self.state == 0:
-            position = sumple.players.index(self)
-            p = sumple.action_distribution(N, links)[position]
+            position = network.players.index(self)
+            p = network.action_distribution(N, links)[position]
             if p >= self.q:
                 action = 1
             else:
                 action = 0
         else:
-            action = 1     #Once choice 1, keep 1 
+            action = 1#Once choice 1, keep 1 
 
         return action
 
 
 class Local_Interaction:
 
-    def __init__(self, N, positions_1):
+    def __init__(self, N):
+        self.adopter = Adopter()
         self.players = [Player(0, q) for i in range(N)]
-        for i in positions_1:
-            self.players[i] = Player(1, q)
+        f_adopter = self.first_adopter(N)
+        self.players[f_adopter] = Player(1, q)
+        self.first_adopters = [f_adopter]
         self.current_state()
+        
 
+#一番最初の採用者を選ぶ。        
+
+    def first_adopter(self, N):
+        return self.adopter.choice_adopter(range(N))#一番最初の採用候補者は全プレイヤー。
+ 
+    
     def current_state(self):
         self.state_1 = []
         for player in self.players:
@@ -66,44 +75,106 @@ class Local_Interaction:
             actions.append(player.play(self))
         for i, player in enumerate(self.players):
             player.state = actions[i]
+            
+            
+class Adopter:
+    
+#採用者候補の中から、一人の採用者を選ぶ。
+#方針は、自分が持つリンク数が一番多いものを選ぶ。
+        
+    def choice_adopter(self, candidacy):
+        num_edges = []
+        for i in candidacy:
+            num_edges.append(len(links[i]))
+        candidacies = self.search_max(candidacy, num_edges)
+        return random.choice(candidacies)#リンク数が等しい場合はランダムに選ぶ。
+        
+    def search_max(self, subjects, num_list):
+        max_sub = []
+        max_num = max(num_list)
+        for i, num in enumerate(num_list):
+            if num == max_num:
+                max_sub.append(subjects[i])
+        return max_sub
+        
+            
+#今の初期採用者ではカスケードが起きない場合、次の候補者を探す。
+#方針は、初期採用者のリンク先のプレイヤーから、最も多くリンクされているプレイヤーを探す。
+#初期採用者とそのリンク先のリスト（ｆ_link_dests）①
+#⇒初期採用者とそのリンク先、のリンク先のリスト（next_cands_uniq）②
+#⇒②の①からのリンク数（num_edges_from_link_dest）
 
+    def link_dest(self, beginings):
+        link_dests = []#初期採用者のリンク先（+初期採用者)
+        for begining in beginings:#初期採用者のリンク先を全て挙げる。
+            link_dests.extend(links[begining])
+        return link_dests
+            
+    def mk_uniq(self, somelist, first_adopters):#初期採用者・重複を消す。
+        somelist_uniq = list(set(somelist))
+        
+        for adopter in first_adopters:
+            if adopter in somelist_uniq:
+                somelist_uniq.remove(adopter)
+        return somelist_uniq
+
+    def next_candidacy(self, first_adopters): 
+        f_link_dests = self.mk_uniq(self.link_dest(first_adopters), first_adopters)
+        f_link_dests.extend(first_adopters)#初期採用者とそのリンク先
+        
+        next_cands = self.link_dest(f_link_dests)
+        next_cands_uniq = self.mk_uniq(next_cands, first_adopters)#初期採用者とそのリンク先、のリンク先（次の採用候補者）
+        
+        num_edges_from_link_dest = []#各採用候補者の、初期採用者とそのリンク先、からのリンク数。
+        for next_cand in next_cands_uniq:#初期採用者とそのリンク先、から最も多くリンクされている候補者に絞り込む。
+            num_edges_from_link_dest.append(next_cands.count(next_cand))#next_cands=重複を消す前の初期採用者のリンク先。
+        
+        n_candidacy = self.search_max(next_cands_uniq, num_edges_from_link_dest)#next_cands_uniqの中で上述のリンク数が最大のもの。
+        
+        return n_candidacy
 
 N = 17  
 a = 3  #attraction of new technology
 b = 2  #attraction of old technology   gain_matrix = [[b,0],[0,a]] 
 q = b/(a+b)  #threshold
-T = 20 
-positions_1 = [6, 7]
+
+#links=各プレイヤーのリンク先を示す。
 links = [[1,2],[0,2,5],[0,1],[4,5,6],[3,6,7],[3,8],[3,4,7,8,9],
          [4,6,9,13],[5,6,9,10],[6,7,8,11],[8,11,14],[9,10,12,14,15],
          [11,13,15,16],[7,12,16],[10,11,15],[11,12,14,16],[12,13,15]]
 
-sumple = Local_Interaction(N, positions_1) 
-transition_1 = []
+sumple = Local_Interaction(N)
 
-for i in range(T): 
-    count_1 = sumple.state_1.count(1)
-    transition_1.append(count_1)
+#一人の初期採用者だけではカスケードが起きない場合、起きるまで初期採用者を選ぶ。
+
+while 1:
+    someone_changed = True
+    old_state = sumple.current_state()
     sumple.update()
+    if old_state == sumple.current_state():
+        next_candidacies = sumple.adopter.next_candidacy(sumple.first_adopters)
+        next_adopter = sumple.adopter.choice_adopter(next_candidacies)
+        sumple.players[next_adopter] = Player(1, q)
+        sumple.first_adopters.append(next_adopter)
+        someone_changed = False
+    if someone_changed:
+        break
 
-
-plt.plot(transition_1, label="action transition_1")
+print sumple.first_adopters
+        
+transition = [len(sumple.first_adopters)]    
+        
+while 1:
+    no_one_changed = True
+    count = sumple.state_1.count(1)
+    transition.append(count)
+    old_state = sumple.current_state()
+    sumple.update()
+    if old_state != sumple.current_state():
+        no_one_changed = False
+    if no_one_changed:
+        break
+        
+plt.plot(transition, label="action transition")
 plt.legend()
 plt.show()
-
-
-G = nx.Graph()
-for i, link in enumerate(links):
-    for nei in link:
-        G.add_edge(i, nei, {"weight":10})
-
-pos = nx.spring_layout(G)
-
-nx.draw_networkx_nodes(G, pos, node_size=300, node_color="w")
-nx.draw_networkx_edges(G, pos, width=1)
-nx.draw_networkx_labels(G, pos ,font_size=13, font_color="r")
-
-plt.xticks([])
-plt.yticks([])
-plt.show() 
-nter file contents here
