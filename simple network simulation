@@ -16,7 +16,7 @@ class Player:
     def play(self, network):
         if self.state == 0:
             position = network.players.index(self)
-            p = network.action_distribution(N, links)[position]
+            p = network.action_distribution(N)[position]
             if p >= self.q:
                 action = 1
             else:
@@ -30,11 +30,12 @@ class Player:
 class Local_Interaction:
 
     def __init__(self, N):
-        self.adopter = Adopter()
+        self.adopter = Adopter(G)
         self.players = [Player(0, q) for i in range(N)]
         f_adopter = self.first_adopter(N)
         self.players[f_adopter] = Player(1, q)
         self.first_adopters = [f_adopter]
+        print self.first_adopters
         self.current_state()
         
 
@@ -64,22 +65,19 @@ class Local_Interaction:
         
         return self.state_1
 
-    def action_distribution(self, N, links):
+    def action_distribution(self, N):
 
-        adj_matrix = np.zeros((N, N))
-        for i, link in enumerate(links):
-            for nei in link:
-                adj_matrix[i, nei] = 1
-
+        adj_matrix = self.adopter.adj_matrix
+    
         current_state = self.current_state()
     
-        num_ops_1 = np.dot(adj_matrix, current_state)
+        num_neis_1 = np.dot(adj_matrix, current_state)
 
         all_p = []
         for i in range(N):
-            num_op = sum(adj_matrix[i])
-            num_op_1 = num_ops_1[i]
-            all_p.append(num_op_1/num_op)
+            num_nei = sum(adj_matrix[i])
+            num_nei_1 = num_neis_1[i]
+            all_p.append(num_nei_1/num_nei)
             
         return all_p
 
@@ -93,13 +91,16 @@ class Local_Interaction:
             
 class Adopter:
     
+    def __init__(self, G):
+        self.adj_matrix = np.asarray(nx.adjacency_matrix(G))
+    
 #採用者候補の中から、一人の採用者を選ぶ。
 #方針は、自分が持つリンク数が一番多いものを選ぶ。
         
     def choice_adopter(self, candidacy):
         num_edges = []
         for i in candidacy:
-            num_edges.append(len(links[i]))
+            num_edges.append(sum(self.adj_matrix[i]))
         candidacies = self.search_max(candidacy, num_edges)
         return random.choice(candidacies)#リンク数が等しい場合はランダムに選ぶ。
         
@@ -121,7 +122,11 @@ class Adopter:
     def link_dest(self, beginings):
         link_dests = []#初期採用者のリンク先（+初期採用者)
         for begining in beginings:#初期採用者のリンク先を全て挙げる。
-            link_dests.extend(links[begining])
+            link_dest = []
+            for i, state in enumerate(self.adj_matrix[begining]):
+                if state == 1:
+                    link_dest.append(i)
+            link_dests.extend(link_dest)
         return link_dests
             
     def mk_uniq(self, somelist, first_adopters):#初期採用者・重複を消す。
@@ -132,12 +137,14 @@ class Adopter:
                 somelist_uniq.remove(adopter)
         return somelist_uniq
 
-    def next_candidacy(self, first_adopters): 
-        f_link_dests = self.mk_uniq(self.link_dest(first_adopters), first_adopters)
+    def next_candidacy(self, first_adopters):
+        link_dests = self.link_dest(first_adopters)
+        f_link_dests = self.mk_uniq(link_dests, first_adopters)
         f_link_dests.extend(first_adopters)#初期採用者とそのリンク先
         
         next_cands = self.link_dest(f_link_dests)
         next_cands_uniq = self.mk_uniq(next_cands, first_adopters)#初期採用者とそのリンク先、のリンク先（次の採用候補者）
+    
         
         num_edges_from_link_dest = []#各採用候補者の、初期採用者とそのリンク先、からのリンク数。
         for next_cand in next_cands_uniq:#初期採用者とそのリンク先、から最も多くリンクされている候補者に絞り込む。
@@ -147,19 +154,11 @@ class Adopter:
         
         return n_candidacy
     
-def draw_network(links, pos, adopters):
-    G = nx.Graph()
-    for i, link in enumerate(links):
-        for nei in link:
-            G.add_edge(i, nei, {"weight":10})  
+def draw_network(G, pos, adopters=[]):
+    
+    nx.draw_networkx(G, pos, node_color="w")
         
-    pos = pos
-        
-    nx.draw_networkx_nodes(G, pos, node_size=300, node_color="w")
-    nx.draw_networkx_edges(G, pos, width=1)
-    nx.draw_networkx_labels(G, pos ,font_size=13, font_color="k")
-
-    nx.draw_networkx_nodes(G, pos, adopters, node_size=300, node_color="r")
+    nx.draw_networkx_nodes(G, pos, adopters, node_color="r")
 
     plt.xticks([])
     plt.yticks([])
@@ -175,14 +174,13 @@ def go_cascade():
         for i, state in enumerate(old_state):
             if state == 1:
                 adopters.append(i)
-        draw_network(links, pos, adopters)
+        draw_network(G, pos, adopters)
         sumple.update()
         if old_state != sumple.current_state():        
             no_one_changed = False
         if no_one_changed:
-            print adopters
+            print adopters 
             break
-            
     return adopters
             
 def next_cascade(N, adopters):
@@ -201,28 +199,41 @@ def next_cascade(N, adopters):
     num_adopters = len(adopters)
     print num_adopters
 
-    draw_network(links, pos, adopters)
+    draw_network(G, pos, adopters)
         
     return go_cascade()
     
 
-N = 17  
+N = 100
+E = 70
 a = 3  #attraction of new technology
 b = 2  #attraction of old technology   gain_matrix = [[b,0],[0,a]] 
 q = b/(a+b)  #threshold
 
-#links=各プレイヤーのリンク先を示す。
-links = [[1,2],[0,2,5],[0,1],[4,5,6],[3,6,7],[3,8],[3,4,7,8,9],
-         [4,6,9,13],[5,6,9,10],[6,7,8,11],[8,11,14],[9,10,12,14,15],
-         [11,13,15,16],[7,12,16],[10,11,15],[11,12,14,16],[12,13,15]]
-
+G = nx.newman_watts_strogatz_graph(N, 5, 0.4, seed=None)
 sumple = Local_Interaction(N)
 pos = nx.spring_layout(G)
         
 #実働部
+print('Cascade 1') 
 sumple.df_adopters()
 print sumple.first_adopters
 num_adopters = len(sumple.first_adopters)
 print num_adopters
-draw_network(links, pos, sumple.first_adopters)
-adopters_1 = go_cascade()
+draw_network(G, pos, sumple.first_adopters)
+adopters = go_cascade()
+
+count = 2
+while 1:
+    all_players_adopt = True
+    if sum(sumple.current_state()) != N:
+        print'Cascade', count
+        adopters = next_cascade(N, adopters)
+        count += 1
+        all_players_adopt = False
+    if all_players_adopt:
+        break
+
+print count
+print('Cascade completed.')
+                
